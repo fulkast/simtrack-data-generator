@@ -36,6 +36,8 @@ public:
 
   Ogre::Matrix4 getProjectionMatrix() const;
 
+  cv::Mat getRenderedTexture() const;
+
 private:
   std::string obj_name_;
   cv::Mat camera_matrix_;
@@ -51,5 +53,6 @@ private:
   float zoom_y_;
   Ogre::Matrix4 projection_matrix_;
   render::OgreContext ogre_context_;
-  std::unique_ptr<render::RigidObject> rigid_object_;
+  std::unique_ptr<render::RigidObject> rigid_object_ptr_;
+  std::unique_ptr<render::OgreMultiRenderTarget> ogre_multi_render_target_ptr_;
 };

@@ -14,6 +14,12 @@ target_link_libraries(generateARFeatures
         scene_rendering
         ${OpenCV_LIBS})
 
+add_executable(render_example src/render_example.cpp)
+
+target_link_libraries(render_example
+        scene_rendering
+        ${OpenCV_LIBS}
+        ${interface_LIBRARIES})
 
 ### TESTS
 enable_testing()

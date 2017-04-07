@@ -4,6 +4,7 @@ project(scene_rendering)
 find_package(utilities REQUIRED)
 find_package(rendering REQUIRED)
 find_package(pose_estimation REQUIRED)
+find_package(CUDA REQUIRED)
 add_definitions("-std=c++11")
 
 include_directories(
@@ -23,4 +24,5 @@ target_link_libraries(${PROJECT_NAME}
   ${utilities_LIBRARIES}
   ${rendering_LIBRARIES}
   ${pose_estimation_LIBRARIES}
+  ${CUDA_LIBRARIES}
 )

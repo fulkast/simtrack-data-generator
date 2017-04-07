@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 #include <cmath>
-#include <string>
+#include <algorithm>
 #include "scene_rendering/rendered_scene.h"
 
 
@@ -21,7 +21,13 @@ protected:
 
 TEST_F(H5ParamLoadingTest, FileNameCorrect)
 {
-  EXPECT_EQ("pringles", myscene_.getOBJName());
+  std::istringstream iss(myscene_.getOBJName());
+  std::vector<std::string> tokens;
+  std::string s;
+  while (getline(iss, s, '/')) {
+    tokens.push_back(s);
+  }
+  EXPECT_EQ("ikeaMug.obj", tokens.back());
 }
 
 TEST_F(H5ParamLoadingTest, WidthCorrect)
