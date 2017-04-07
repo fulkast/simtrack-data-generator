@@ -5,7 +5,8 @@ find_package(interface REQUIRED)
 find_package(OpenCV 3.2.0 REQUIRED)
 add_subdirectory(scene_rendering)
 
-include_directories(scene_rendering/include)
+include_directories(scene_rendering/include
+        $interface_INCLUDE_DIRS})
 
 add_executable(generateARFeatures src/generate-AR-features.cpp)
 
@@ -23,7 +24,8 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif()
 
 find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
+include_directories(${GTEST_INCLUDE_DIRS}
+        ${interface_INCLUDE_DIRS})
 
 add_executable(parse_h5_param_test tests/h5_param_parsing/h5_param_parsing.cpp)
 target_link_libraries(parse_h5_param_test

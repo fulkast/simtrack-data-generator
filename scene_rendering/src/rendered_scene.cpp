@@ -36,6 +36,27 @@ RenderedScene::RenderedScene(std::string hdf5_file_name) {
   }
   setCameraMatrix(camera_matrix);
 
+  fx_ = camera_matrix.at<double>(0, 0);
+  fy_ = camera_matrix.at<double>(1, 1);
+  cx_ = camera_matrix.at<double>(0, 2);
+  cy_ = camera_matrix.at<double>(1, 2);
+
+  near_plane_ = .001f;
+  far_plane_ = 10.0f;
+  zoom_x_ = 1;
+  zoom_y_ = 1;
+
+  projection_matrix_[0][0] = 2.0 * fx_ / (double)width_ * zoom_x_;
+  projection_matrix_[1][1] = 2.0 * fy_ / (double)height_ * zoom_y_;
+  projection_matrix_[0][2] = 2.0 * (0.5 - cx_ / (double)width_) * zoom_x_;
+  projection_matrix_[1][2] = 2.0 * (cy_ / (double)height_ - 0.5) * zoom_y_;
+  projection_matrix_[2][2] =
+    -(far_plane_ + near_plane_) / (far_plane_ - near_plane_);
+  projection_matrix_[2][3] =
+    -2.0 * far_plane_ * near_plane_ / (far_plane_ - near_plane_);
+  projection_matrix_[3][2] = -1;
+
+
 }
 
 void RenderedScene::setOBJName(std::string obj_name) {
@@ -51,7 +72,7 @@ void RenderedScene::setCameraMatrix(const cv::Mat matrix) {
 }
 
 cv::Mat RenderedScene::getCameraMatrix() const {
-  return camera_matrix_.clone();
+  return camera_matrix_;
 }
 
 void RenderedScene::setWidth(int width) {
@@ -68,4 +89,8 @@ void RenderedScene::setHeight(int height) {
 
 int RenderedScene::getHeight() const {
   return height_;
+}
+
+Ogre::Matrix4 RenderedScene::getProjectionMatrix() const {
+  return projection_matrix_;
 }
