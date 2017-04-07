@@ -22,6 +22,10 @@ endif()
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
 
-add_executable(foo tests/h5_param_parsing/h5_param_parsing.cpp)
-target_link_libraries(foo ${GTEST_BOTH_LIBRARIES} pthread scene_rendering)
-add_test(AllTestsInFoo foo)
+add_executable(parse_h5_param_test tests/h5_param_parsing/h5_param_parsing.cpp)
+target_link_libraries(parse_h5_param_test
+  ${GTEST_BOTH_LIBRARIES}
+  pthread
+  scene_rendering
+)
+add_test(AllParamParseTests parse_h5_param_test)
