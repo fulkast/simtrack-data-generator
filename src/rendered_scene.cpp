@@ -1,4 +1,4 @@
-#include "scene_rendering/rendered_scene.h"
+#include "../include/scene_rendering/rendered_scene.h"
 #include <hdf5_file.h>
 
 
@@ -164,4 +164,28 @@ cv::Mat RenderedScene::getRenderedTexture() const {
 
   ogre_multi_render_target_ptr_->unmapCudaArrays();
   return texture;
+}
+
+cv::Mat RenderedScene::getSegmentIndexImage() const {
+  std::vector<cudaArray **> cuda_arrays;
+  int n_arrays = 6;
+  for (int i = 0; i < n_arrays; i++)
+    cuda_arrays.push_back(new cudaArray *);
+
+  std::vector<int> out_size{ height_, width_ };
+  std::vector<float> h_out(height_ * width_);
+
+  ogre_multi_render_target_ptr_->mapCudaArrays(cuda_arrays);
+
+  cv::Mat texture = cv::Mat::zeros(height_, width_, CV_8UC4);
+
+  cudaMemcpyFromArray(texture.data, *cuda_arrays.at(4), 0, 0,
+                      width_ * height_ * sizeof(float), cudaMemcpyDeviceToHost);
+
+  ogre_multi_render_target_ptr_->unmapCudaArrays();
+  return texture;
+}
+
+std::vector<cv::Point2d> RenderedScene::getValidFlowPoints() const {
+
 }

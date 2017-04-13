@@ -12,7 +12,7 @@ int main(int argc, char const *argv[]) {
                "tests/test_data/obj_file_name.h5"};
   RenderedScene myscene_(h5filename);
   cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );// Create a window for display.
-  cv::imshow( "Display window", myscene_.getRenderedTexture() );   // Show our image inside it.
+  cv::imshow( "Display window", myscene_.getSegmentIndexImage() );   // Show our image inside it.
 
   cv::waitKey(0);                       // Wait for a keystroke in the window
 

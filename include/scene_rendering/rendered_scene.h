@@ -38,6 +38,10 @@ public:
 
   cv::Mat getRenderedTexture() const;
 
+  cv::Mat getSegmentIndexImage() const;
+
+  std::vector<cv::Point2d> getValidFlowPoints() const;
+
 private:
   std::string obj_name_;
   cv::Mat camera_matrix_;
