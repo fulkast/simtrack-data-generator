@@ -31,7 +31,7 @@ public:
 
   // given the object is a the current_pose, return a vector of valid
   // feature points in pixel coordinates
-  std::vector<Eigen::Vector3f> getValidPointsAtPose() ;
+  std::vector<pose::TranslationRotation3D> getValidPointsAtPose() ;
 
   pose::TranslationRotation3D getCameraPose() const {
     return multi_rigid_tracker_ptr_->getCameraPose();

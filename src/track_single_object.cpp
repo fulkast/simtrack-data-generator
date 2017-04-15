@@ -115,7 +115,7 @@ void TrackSingleObject::setDefaultPose() {
   auto pose = &poses[0];
 
   double T[3] = {0.,0,0.5};
-  double R[3] = {0,1,1};
+  double R[3] = {0,1.57,0};
   pose->setR(R);
   pose->setT(T);
 
@@ -129,9 +129,9 @@ void TrackSingleObject::brightenBackground(int increment) {
   updateBackgroundDefault();
 }
 
-std::vector<Eigen::Vector3f> TrackSingleObject::getValidPointsAtPose()  {
+std::vector<pose::TranslationRotation3D> TrackSingleObject::getValidPointsAtPose()  {
 
-  std::vector<Eigen::Vector3f> result;
+  std::vector<pose::TranslationRotation3D> result;
 
   updateBackgroundDefault();
   auto mask  = getDefaultObjectMask();
@@ -174,7 +174,7 @@ std::vector<Eigen::Vector3f> TrackSingleObject::getValidPointsAtPose()  {
         float z = depth.at<float>(row,col);
         float x = float(col-cx_) / fx_ * z;
         float y = float(row-cy_) / fy_ * z;
-        auto point = Eigen::Vector3f(x,y,z);
+        auto point = pose::TranslationRotation3D({x,y,z},{0,0,0});
         result.push_back(point);
         min_x = std::min(x, min_x);
         max_x = std::max(x, max_x);

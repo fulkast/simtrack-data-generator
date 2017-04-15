@@ -29,13 +29,11 @@ int main()
 
     auto points = trackSingleObject.getValidPointsAtPose();
 
+    auto obj_inverse_transform = trackSingleObject.getObjectPose().inverseTransform();
     for (auto point : points) {
-      std::cout << point << std::endl;
+      (obj_inverse_transform*point).showCompact();
     }
-    auto point_on_obj =
-      trackSingleObject.getObjectPose().inverseTransform()*trackSingleObject.getCameraPose();
 
-    point_on_obj.show();
 //    cv::fillConvexPoly(I, points, cv::Scalar(225,255,255));
 
     cv::namedWindow("texture_image", cv::WINDOW_AUTOSIZE);
