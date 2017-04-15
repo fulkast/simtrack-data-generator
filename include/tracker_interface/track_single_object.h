@@ -23,16 +23,25 @@ public:
 
   cv::Mat getFlow() const;
 
+  cv::Mat getDefaultObjectMask() const;
+
   cv::Mat getObjectMask() const;
+
+  cv::Mat getDepth() const;
 
   // given the object is a the current_pose, return a vector of valid
   // feature points in pixel coordinates
-  std::vector<cv::Point2i> getValidPointsAtPose(pose::TranslationRotation3D
-                                                current_pose) ;
+  std::vector<Eigen::Vector3f> getValidPointsAtPose() ;
 
   void brightenBackground(int);
 
-  void randomlyPerturbXUniform(float);
+  void setDefaultPose();
+
+  float randomlyPerturbXUniform(float);
+
+  void updateBackgroundImage(cv::Mat);
+
+  void updateBackgroundDefault();
 
 private:
 
@@ -40,10 +49,16 @@ private:
   pose::D_MultipleRigidPoses::Parameters pose_parameters_;
   int image_height_;
   int image_width_;
+  double cx_;
+  double cy_;
+  double fx_;
+  double fy_;
 
   interface::MultiRigidTracker::Ptr multi_rigid_tracker_ptr_;
 
   std::vector<int> background_data_;
+  cv::Mat default_obj_mask_;
+  cv::Mat camera_matrix_;
 
 };
 

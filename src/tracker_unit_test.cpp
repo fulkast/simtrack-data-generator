@@ -15,9 +15,27 @@ int main()
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
   while (true) {
-//    trackSingleObject.brightenBackground(1);
     trackSingleObject.randomlyPerturbXUniform(35);
+    auto mask  = trackSingleObject.getDefaultObjectMask();
+    auto new_pose = trackSingleObject.getObjectMask();
+
     auto image = trackSingleObject.getFlow();
+
+    cv::Mat I(image.size(), image.type(), cv::Scalar(0));
+    cv::bitwise_and(image,I,image, 1-mask);
+
+    cv::cvtColor(new_pose,new_pose,CV_GRAY2BGRA);
+    cv::hconcat(image, new_pose, image);
+
+    auto points = trackSingleObject.getValidPointsAtPose();
+
+    for (auto point : points) {
+      std::cout << point << std::endl;
+    }
+
+
+
+//    cv::fillConvexPoly(I, points, cv::Scalar(225,255,255));
 
     cv::namedWindow("texture_image", cv::WINDOW_AUTOSIZE);
     cv::imshow("texture_image", image);

@@ -4,6 +4,8 @@
 
 #include "../include/tracker_interface/track_single_object.h"
 
+#include <utility_kernels_pose.h>
+
 TrackSingleObject::TrackSingleObject(std::string hdf5_file_name) {
 
   // Load parameters
@@ -22,15 +24,19 @@ TrackSingleObject::TrackSingleObject(std::string hdf5_file_name) {
   std::string obj_name = in_file.readScalar<std::string>("obj_file_name");
   std::cout << obj_name << " is the object name" << std::endl;
 
-  cv::Mat camera_matrix;
   {
     std::vector<int> size;
     std::vector<double> data;
     in_file.readArray("camera_matrix", data, size);
     if ((size.at(0) != 3) || (size.at(1) != 4))
       throw std::runtime_error("Expecting 4x3 camera_matrix");
-    camera_matrix = cv::Mat(3, 4, CV_64FC1, data.data()).clone();
+    camera_matrix_ = cv::Mat(3, 4, CV_64FC1, data.data()).clone();
   }
+
+  cx_ = camera_matrix_.at<double>(0, 2);
+  cy_ = camera_matrix_.at<double>(1, 2);
+  fx_ = camera_matrix_.at<double>(0, 0);
+  fy_ = camera_matrix_.at<double>(1, 1);
 
   std::vector<interface::MultiRigidTracker::ObjectInfo> object_info;
   object_info.push_back(interface::MultiRigidTracker::ObjectInfo(
@@ -39,14 +45,12 @@ TrackSingleObject::TrackSingleObject(std::string hdf5_file_name) {
   image_width_  = in_file.readScalar<int>("width");
   image_height_ = in_file.readScalar<int>("height");
   flow_parameters_.consistent_ = true;
-//  pose_parameters_.w_ar_flow_  = 0.;
-//  pose_parameters_.w_disp_     = 0.;
-//  pose_parameters_.w_flow_     = 0.;
+
 
   multi_rigid_tracker_ptr_ =
     interface::MultiRigidTracker::Ptr(new interface::MultiRigidTracker(
       image_width_, image_height_,
-      camera_matrix, object_info,
+      camera_matrix_, object_info,
       flow_parameters_, pose_parameters_ ));
 
   background_data_ = std::vector<int>(image_height_ * image_width_, 255);
@@ -67,48 +71,131 @@ cv::Mat TrackSingleObject::getFlow() const {
     optical_flow_x);
 }
 
-cv::Mat TrackSingleObject::getObjMask() const {
-  return mu
+cv::Mat TrackSingleObject::getDefaultObjectMask() const {
+  return default_obj_mask_;
 }
 
-void TrackSingleObject::randomlyPerturbXUniform(float mag) {
+cv::Mat TrackSingleObject::getObjectMask() const {
+  return multi_rigid_tracker_ptr_->getObjMask();
+}
 
+cv::Mat TrackSingleObject::getDepth() const {
+  util::Device1D<float> z_data(image_width_*image_height_);
+  auto z_buffer = multi_rigid_tracker_ptr_->getZBuffer();
+  pose::convertZbufferToZ(z_data.data(), z_buffer,
+                          image_width_, image_height_,
+                          cx_, cy_,
+                          pose_parameters_.near_plane_, pose_parameters_.far_plane_);
+
+  std::vector<float> h_out(image_height_*image_width_);
+  z_data.copyTo(h_out);
+
+  cv::Mat result(image_height_, image_width_, CV_32FC1, h_out.data());
+  return result;
+}
+
+float TrackSingleObject::randomlyPerturbXUniform(float mag) {
+
+  setDefaultPose();
+  default_obj_mask_ = getObjectMask();
+  updateBackgroundDefault();
+
+  double rand_scalar = ( double(std::rand())/double(std::numeric_limits<int>::max()) - 0.5) * mag;
+  auto poses = multi_rigid_tracker_ptr_->getPoses();
+  auto pose = &poses[0];
+  pose->rotateX( rand_scalar );
+  multi_rigid_tracker_ptr_->setPoses(poses);
+  updateBackgroundDefault();
+
+  return rand_scalar;
+}
+
+void TrackSingleObject::setDefaultPose() {
   auto poses = multi_rigid_tracker_ptr_->getPoses();
   auto pose = &poses[0];
 
-  double T[3] = {0,0,0.5};
+  double T[3] = {0.,0,0.5};
   double R[3] = {0,1,0};
   pose->setR(R);
   pose->setT(T);
 
   multi_rigid_tracker_ptr_->setPoses(poses);
-  cv::Mat new_background(image_height_, image_width_,
-                         CV_8UC1, background_data_.data() );
-  multi_rigid_tracker_ptr_->updatePoses(new_background);
-
-  double rand_scalar = ( double(std::rand())/double(std::numeric_limits<int>::max()) - 0.5) * mag;
-  std::cout << "rand scalar: " << rand_scalar << std::endl;
-  pose->rotateX( rand_scalar);
-  multi_rigid_tracker_ptr_->setPoses(poses);
-  multi_rigid_tracker_ptr_->updatePoses(new_background);
 }
 
 void TrackSingleObject::brightenBackground(int increment) {
   std::transform(background_data_.begin(), background_data_.end(),
     background_data_.begin(), [increment] (int &x) { return (x + std::rand()) % 255; });
   std::cout << background_data_[0] << " is the current background brightness" << std::endl;
-  cv::Mat new_background(image_height_, image_width_,
-                         CV_8UC1, background_data_.data() );
+  updateBackgroundDefault();
+}
+
+std::vector<Eigen::Vector3f> TrackSingleObject::getValidPointsAtPose()  {
+
+  std::vector<Eigen::Vector3f> result;
+
+  updateBackgroundDefault();
+  auto mask  = getDefaultObjectMask();
+  auto new_pose = getObjectMask();
+  setDefaultPose();
+  auto depth = getDepth().clone();
+
+  // get produced ar flow
+  auto image = getFlow();
+
+  // simply flow fow testing purposes
+  cv::cvtColor(image,image, CV_BGRA2GRAY);
+
+  // zero out points that are not on the object
+  cv::Mat I(image.size(), image.type(), cv::Scalar(0));
+  cv::bitwise_and(image,I,image, 1-mask);
+
+  I = image;
+  int channels = I.channels();
+  int nRows = I.rows;
+  int nCols = I.cols * channels;
+  if (I.isContinuous())
+  {
+    nCols *= nRows;
+    nRows = 1;
+  }
+  int i,j;
+  uchar* p;
+  float min_x = 10.;
+  float max_x = -10.;
+  for( i = 0; i < nRows; ++i)
+  {
+    p = I.ptr<uchar>(i);
+    for ( j = 0; j < nCols; ++j)
+    {
+      int col = j % I.cols;
+      int row = j / I.cols;
+      if (p[j] != 0 && !isnan(p[j]) && (p[j] != 255)) {
+
+        float z = depth.at<float>(row,col);
+        float x = float(col-cx_) / fx_ * z;
+        float y = float(row-cy_) / fy_ * z;
+        auto point = Eigen::Vector3f(x,y,z);
+        result.push_back(point);
+        min_x = std::min(x, min_x);
+        max_x = std::max(x, max_x);
+//        std::cout << "col: " << col << " row: " << row << std::endl;
+//        std::cout << "x: " << x << std::endl;
+      }
+    }
+//    std::cout << "min x: " << min_x << std::endl;
+//    std::cout << "max x: " << max_x << std::endl;
+    std::cout << std::endl;
+  }
+
+  return result;
+}
+
+void TrackSingleObject::updateBackgroundImage(cv::Mat new_background) {
   multi_rigid_tracker_ptr_->updatePoses(new_background);
 }
 
-std::vector<cv::Point2i> TrackSingleObject::getValidPointsAtPose(pose::TranslationRotation3D current_pose)  {
-  std::vector<pose::TranslationRotation3D> poses(1,current_pose);
-  multi_rigid_tracker_ptr_->setPoses(poses);
-
-  cv::Mat new_background(image_height_, image_width_, CV_8UC1, background_data_.data() );
-  multi_rigid_tracker_ptr_->updatePoses(new_background);
-
-
-
+void TrackSingleObject::updateBackgroundDefault() {
+  cv::Mat new_background(image_height_, image_width_,
+                         CV_8UC1, background_data_.data() );
+  updateBackgroundImage(new_background);
 }
