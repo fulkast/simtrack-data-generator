@@ -115,7 +115,7 @@ void TrackSingleObject::setDefaultPose() {
   auto pose = &poses[0];
 
   double T[3] = {0.,0,0.5};
-  double R[3] = {0,1,0};
+  double R[3] = {0,1,1};
   pose->setR(R);
   pose->setT(T);
 
