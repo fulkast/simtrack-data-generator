@@ -44,7 +44,7 @@ TrackSingleObject::TrackSingleObject(std::string hdf5_file_name) {
 
   image_width_  = in_file.readScalar<int>("width");
   image_height_ = in_file.readScalar<int>("height");
-  flow_parameters_.consistent_ = true;
+  flow_parameters_.consistent_ = false;
 
 
   multi_rigid_tracker_ptr_ =
@@ -97,7 +97,6 @@ cv::Mat TrackSingleObject::getDepth() const {
 float TrackSingleObject::randomlyPerturbXUniform(float mag) {
 
   setDefaultPose();
-  default_obj_mask_ = getObjectMask();
   updateBackgroundDefault();
 
   double rand_scalar = ( double(std::rand())/double(std::numeric_limits<int>::max()) - 0.5) * mag;
@@ -120,6 +119,7 @@ void TrackSingleObject::setDefaultPose() {
   pose->setT(T);
 
   multi_rigid_tracker_ptr_->setPoses(poses);
+  default_obj_mask_ = getObjectMask();
 }
 
 void TrackSingleObject::brightenBackground(int increment) {
@@ -133,22 +133,25 @@ std::vector<pose::TranslationRotation3D> TrackSingleObject::getValidPointsAtPose
 
   std::vector<pose::TranslationRotation3D> result;
 
-  updateBackgroundDefault();
-  auto mask  = getDefaultObjectMask();
-  auto new_pose = getObjectMask();
+  // Update the buffer of the optical flow twice to represent a static scene
   setDefaultPose();
+  updateBackgroundDefault();
+  setDefaultPose();
+  updateBackgroundDefault();
+
+  auto mask  = getDefaultObjectMask();
   auto depth = getDepth().clone();
 
   // get produced ar flow
   auto image = getFlow();
-
-  // simply flow fow testing purposes
+  // simplify flow
   cv::cvtColor(image,image, CV_BGRA2GRAY);
 
   // zero out points that are not on the object
   cv::Mat I(image.size(), image.type(), cv::Scalar(0));
   cv::bitwise_and(image,I,image, 1-mask);
 
+  // pick out regions with texture i.e. valid flow
   I = image;
   int channels = I.channels();
   int nRows = I.rows;
@@ -160,8 +163,6 @@ std::vector<pose::TranslationRotation3D> TrackSingleObject::getValidPointsAtPose
   }
   int i,j;
   uchar* p;
-  float min_x = 10.;
-  float max_x = -10.;
   for( i = 0; i < nRows; ++i)
   {
     p = I.ptr<uchar>(i);
@@ -169,6 +170,7 @@ std::vector<pose::TranslationRotation3D> TrackSingleObject::getValidPointsAtPose
     {
       int col = j % I.cols;
       int row = j / I.cols;
+      // probe for valid flow
       if (p[j] != 0 && !isnan(p[j]) && (p[j] != 255)) {
 
         float z = depth.at<float>(row,col);
@@ -176,15 +178,8 @@ std::vector<pose::TranslationRotation3D> TrackSingleObject::getValidPointsAtPose
         float y = float(row-cy_) / fy_ * z;
         auto point = pose::TranslationRotation3D({x,y,z},{0,0,0});
         result.push_back(point);
-        min_x = std::min(x, min_x);
-        max_x = std::max(x, max_x);
-//        std::cout << "col: " << col << " row: " << row << std::endl;
-//        std::cout << "x: " << x << std::endl;
       }
     }
-//    std::cout << "min x: " << min_x << std::endl;
-//    std::cout << "max x: " << max_x << std::endl;
-    std::cout << std::endl;
   }
 
   return result;

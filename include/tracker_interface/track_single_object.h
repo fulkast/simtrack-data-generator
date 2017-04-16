@@ -51,16 +51,17 @@ public:
 
   void updateBackgroundDefault();
 
+  double cx_;
+  double cy_;
+  double fx_;
+  double fy_;
+
 private:
 
   vision::D_OpticalAndARFlow::Parameters flow_parameters_;
   pose::D_MultipleRigidPoses::Parameters pose_parameters_;
   int image_height_;
   int image_width_;
-  double cx_;
-  double cy_;
-  double fx_;
-  double fy_;
 
   interface::MultiRigidTracker::Ptr multi_rigid_tracker_ptr_;
 
