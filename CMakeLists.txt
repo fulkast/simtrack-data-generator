@@ -48,8 +48,19 @@ target_link_libraries(tracker_unit_test
         ${CUDA_LIBRARIES}
         ${pose_estimation_LIBRARIES}
         )
-#        ${OpenCV_LIBS} )
 
+
+add_executable(write_query_points src/write_query_points.cpp)
+
+target_link_libraries(write_query_points
+        ${OpenCV_LIBS}
+        ${interface_LIBRARIES}
+        ${PROJECT_NAME}
+        ${utilities_LIBRARIES}
+        ${rendering_LIBRARIES}
+        ${CUDA_LIBRARIES}
+        ${pose_estimation_LIBRARIES}
+        )
 
 ### TESTS
 enable_testing()

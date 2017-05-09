@@ -52,7 +52,7 @@ int main()
       int y = T[1] / T[2] * trackSingleObject.fy_ + trackSingleObject.cy_;
 
       pixel_points_camera.push_back(cv::Point(x,y));
-      cv::circle(output, cv::Point(x,y),0.5,cv::Scalar(255,255,255));
+      cv::circle(output, cv::Point(x,y),3,cv::Scalar(255,255,255));
     }
 
     cv::hconcat(flow_image, output, output);
